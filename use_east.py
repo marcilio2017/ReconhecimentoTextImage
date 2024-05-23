@@ -43,7 +43,9 @@ def decode_predictions(scores, geometry, score_thresh):
     return rects, confidences
 
 # Caminho para a imagem e modelo EAST
-image_path = 'gasolina_esp.png'
+image_path = 'testnumber.png'
+#image_path = 'testnumber2.png'
+#image_path = 'testeReconhecimento.png'
 east_model_path = 'frozen_east_text_detection.pb'
 
 # Carregar a imagem
@@ -95,9 +97,13 @@ for i in range(len(boxes)):
 
     # Usar pytesseract para extrair o texto da região
     caminho = r'C:\Program Files\Tesseract-OCR'
-    pytesseract.pytesseract.tesseract_cmd = caminho + r'\tesseract.exe'
+    
     #text = pytesseract.image_to_string(pil_image, config='--psm 7')  # '--psm 7' assume uma única linha de texto
-    text = pytesseract.image_to_string(pil_image, lang='por')
+    custom_config = r'--oem 3 --psm 6'
+    #custom_config = r"--tessdata-dir tessdata --psm 7"
+    #text = pytesseract.image_to_string(pil_image, lang='por')
+    pytesseract.pytesseract.tesseract_cmd = caminho + r'\tesseract.exe'
+    text = pytesseract.image_to_string(pil_image, lang='por', config=custom_config)
     # Exibir o texto extraído
     print(text)
 
@@ -105,6 +111,6 @@ for i in range(len(boxes)):
     cv2.rectangle(orig, (startX, startY), (endX, endY), (0, 255, 0), 2)
 
 # Exibir a imagem com as caixas desenhadas (opcional)
-cv2.imshow("Text Detection", orig)
-cv2.waitKey(0)
-cv2.destroyAllWindows()
+#cv2.imshow("Text Detection", orig)
+#cv2.waitKey(0)
+#cv2.destroyAllWindows()
