@@ -1,58 +1,62 @@
 import cv2
 import easyocr
+import numpy as np
 
-# Função para detectar se a imagem tem fundo escuro
-def is_dark_background(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    mean_intensity = cv2.mean(gray)[0]
-    print(mean_intensity)
-    return mean_intensity < 126  # Se a intensidade média for menor que 127, consideramos fundo escuro
+def aplicar_zoom(imagem, fator_zoom):
+    altura, largura = imagem.shape[:2]
+    nova_largura = int(largura * fator_zoom)
+    nova_altura = int(altura * fator_zoom)
+    imagem_zoomeada = cv2.resize(imagem, (nova_largura, nova_altura), interpolation=cv2.INTER_LINEAR)
+    return imagem_zoomeada
 
-# Função para pré-processamento de imagens com fundo escuro
-def preprocess_image_dark(image):
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    _, binary_image = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)
-    return binary_image
+def ajustar_brilho_contraste(image, brilho=30, contraste=30):
+    image = cv2.convertScaleAbs(image, alpha=1 + contraste / 100.0, beta=brilho)
+    return image
 
-# Função para pré-processamento de imagens com fundos claros ou variados
-def preprocess_image_light(image):
+def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    median = cv2.medianBlur(gray, 5)
+    
+    # Aumentar o contraste usando equalização do histograma adaptativa (CLAHE)
     clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
-    enhanced = clahe.apply(median)
-    _, binary_image = cv2.threshold(enhanced, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    return binary_image
-
+    gray = clahe.apply(gray)
+    
+    # Aplicar suavização para reduzir o ruído
+    blurred = cv2.medianBlur(gray, 5)
+    
+    # Limiarização adaptativa para segmentar o texto
+    thresh = cv2.adaptiveThreshold(blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY_INV, 11, 2)
+    
+    return thresh
 
 # Ler a imagem
-#imagem = cv2.imread(r'imagens_cortadas\tetra_corte.png')
-imagem = cv2.imread(r'imagens_reais\tetraposto.jpeg')
+imagem = cv2.imread(r'imagens_reais\fan.jpeg')
 
-imagem_suavizada = cv2.medianBlur(imagem, 7)
+# Aplicar zoom na imagem
+fator_zoom = 1.2  # Fator de zoom ajustado
+imagem_zoomeada = aplicar_zoom(imagem, fator_zoom)
 
-# Detectar se a imagem tem fundo escuro
-if is_dark_background(imagem):
-    imagem_preprocessada = preprocess_image_dark(imagem)
+# Ajustar brilho e contraste da imagem
+imagem_ajustada = ajustar_brilho_contraste(imagem_zoomeada, brilho=30, contraste=30)
+
+# Pré-processar a imagem
+imagem_processada = preprocess_image(imagem_ajustada)
+
+# Inicializar o leitor do EasyOCR
+reader = easyocr.Reader(['en'], gpu=True)
+
+# Realizar a leitura do texto na imagem processada
+resultado = reader.readtext(imagem_processada)
+
+# Extrair o texto e calcular a confiança média
+texto = ' '.join([entry[1] for entry in resultado]).replace('/', '')
+confiancas = [entry[2] for entry in resultado]
+confianca_media = np.mean(confiancas)
+
+# Exibir o texto detectado e a confiança média
+if confianca_media > 0.38:
+    print("Texto detectado:")
+    print(texto)
+    print("Confiança média da extração do código:", confianca_media)
 else:
-    imagem_preprocessada = preprocess_image_light(imagem)
-
-
-# Salvar a imagem pré-processada para inspeção
-cv2.imwrite('imagem_preprocessada.png', imagem_preprocessada)
-
-# Configuração do EasyOCR
-reader = easyocr.Reader(['en'], gpu=True)  # Especifique os idiomas conforme necessário
-
-# Extrair texto da imagem pré-processada
-resultado_preprocessada = reader.readtext(imagem_preprocessada)
-
-# Extrair texto da imagem original se a pré-processada falhar
-if not resultado_preprocessada:
-    resultado_preprocessada = reader.readtext(imagem)
-
-# Extrair o texto das regiões detectadas e remover "/"
-texto = ' '.join([entry[1] for entry in resultado_preprocessada]).replace('/', '')
-
-print("Texto detectado:")
-print(texto)
-
+    print('Imagem não reconhecida')
+    print("Confiança média da extração do código:", confianca_media)
