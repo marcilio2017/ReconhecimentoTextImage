@@ -8,13 +8,10 @@ imagem = cv2.imread(r'imagens_reais\tetraposto.jpeg')
 
 imagem_suavizada = cv2.medianBlur(imagem, 7)
 
-# Configuração do EasyOCR
-reader = easyocr.Reader(['en'], gpu=True)  # Especifique os idiomas conforme necessário
+reader = easyocr.Reader(['en'], gpu=True)  
 
-# Extrair texto
 resultado = reader.readtext(imagem)
 
-# Extrair o texto das regiões detectadas e remover "/"
 texto = ' '.join([entry[1] for entry in resultado]).replace('/', '')
 
 texto_corrigido = texto.replace('#', '1')

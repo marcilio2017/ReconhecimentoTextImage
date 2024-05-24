@@ -5,7 +5,8 @@ import easyocr
 def is_dark_background(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mean_intensity = cv2.mean(gray)[0]
-    return mean_intensity < 127  # Se a intensidade média for menor que 127, consideramos fundo escuro
+    print(mean_intensity)
+    return mean_intensity < 126  # Se a intensidade média for menor que 127, consideramos fundo escuro
 
 # Função para pré-processamento de imagens com fundo escuro
 def preprocess_image_dark(image):
@@ -25,7 +26,7 @@ def preprocess_image_light(image):
 
 # Ler a imagem
 #imagem = cv2.imread(r'imagens_cortadas\tetra_corte.png')
-imagem = cv2.imread(r'imagens_reais\postoRG.jpeg')
+imagem = cv2.imread(r'imagens_reais\tetraposto.jpeg')
 
 imagem_suavizada = cv2.medianBlur(imagem, 7)
 
@@ -54,3 +55,4 @@ texto = ' '.join([entry[1] for entry in resultado_preprocessada]).replace('/', '
 
 print("Texto detectado:")
 print(texto)
+
