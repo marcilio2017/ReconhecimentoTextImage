@@ -2,54 +2,68 @@ import cv2
 import easyocr
 import numpy as np
 
+def aplicar_zoom(imagem, fator_zoom):
+    altura, largura = imagem.shape[:2]
+    nova_largura = int(largura * fator_zoom)
+    nova_altura = int(altura * fator_zoom)
+    imagem_zoomeada = cv2.resize(imagem, (nova_largura, nova_altura), interpolation=cv2.INTER_LINEAR)
+    return imagem_zoomeada
+
+def ajustar_brilho_contraste(image, brilho=30, contraste=30):
+    image = cv2.convertScaleAbs(image, alpha=1 + contraste / 100.0, beta=brilho)
+    return image
+
 def preprocess_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    
+    # Aumentar o contraste usando equalização do histograma adaptativa (CLAHE)
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    gray = clahe.apply(gray)
+    
     mean_brightness = np.mean(gray)
-    print(mean_brightness)
-
+    print("Mean Brightness:", mean_brightness)
+    
     if mean_brightness < 125:
         _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
-        return thresh
-    return None
+        # Aplicar operações morfológicas para melhorar a visibilidade do texto
+        kernel = np.ones((2, 2), np.uint8)
+        morphed = cv2.morphologyEx(thresh, cv2.MORPH_CLOSE, kernel)
+        return morphed
+    return gray
 
-# Carregar imagem
-imagem = cv2.imread(r'imagens_reais\fan.jpeg')
+# Ler a imagem
+#imagem = cv2.imread(r'imagens\testenumber.png')
+imagem = cv2.imread(r'imagens_reais\ypiranga.jpeg')
 
-# Pré-processamento da imagem
-imagem_processada = preprocess_image(imagem)
-if imagem_processada is None:
-    imagem_processada = imagem  # Usar imagem original se o pré-processamento falhar
+# Aplicar zoom na imagem
+fator_zoom = 1.2  # Fator de zoom ajustado
+imagem_zoomeada = aplicar_zoom(imagem, fator_zoom)
 
-# Suavizar a imagem
-imagem_suavizada = cv2.medianBlur(imagem_processada, 7)
+# Ajustar brilho e contraste da imagem
+imagem_ajustada = ajustar_brilho_contraste(imagem_zoomeada, brilho=30, contraste=30)
 
-# Extrair texto com detalhes
+# Suavizar a imagem ajustada
+imagem_suavizada = cv2.medianBlur(imagem_ajustada, 5)
+
+# Processar a imagem para verificar a luminosidade
+imagem_processada = preprocess_image(imagem_suavizada)
+
+# Inicializar o leitor do EasyOCR
 reader = easyocr.Reader(['en'], gpu=True)
-resultado = reader.readtext(imagem_suavizada, detail=True)
 
-# Extrair texto e confianças
-texto = []
-confiancas = []
-for entry in resultado:
-    texto_caractere = entry[1]
-    confianca_caractere = entry[2]
+# Realizar a leitura do texto na imagem processada
+resultado = reader.readtext(imagem_processada)
 
-    texto.append(texto_caractere)
-    confiancas.append(confianca_caractere)
+# Extrair o texto e calcular a confiança média
+texto = ' '.join([entry[1] for entry in resultado]).replace('/', '')
+confiancas = [entry[2] for entry in resultado]
+confianca_media = np.mean(confiancas)
 
-# Calcular confianca média
-confianca_media = sum(confiancas) / len(confiancas)
-
-# Exibir texto final com confianças (opcional)
-# Se você deseja exibir o texto final com as confianças individuais, 
-# remova as duas linhas de comentário abaixo e modifique a formatação conforme necessário.
-# 
-# texto_com_confianca = ' '.join([f"{texto_caractere} ({confianca_caractere:.2f})" for texto_caractere, confianca_caractere in zip(texto, confiancas)])
-# print(f"Texto detectado com confianças individuais:\n{texto_com_confianca}")
-
-# Exibir confianca média
-print("Confiança média do texto detectado:")
-print(confianca_media)
-
-print("Texto detectado:")
-print(texto)
+# Exibir o texto detectado e a confiança média
+if confianca_media > 0.40:
+    print("Texto detectado:")
+    print(texto)
+    print("Confiança média da extração do código:", confianca_media)
+else:
+    print('Imagem não reconhecida')
+    print("Confiança média da extração do código:", confianca_media)
