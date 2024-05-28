@@ -32,11 +32,11 @@ def preprocess_image(image):
     return gray
 
 # Ler a imagem
-#imagem = cv2.imread(r'imagens\testenumber.png')
-imagem = cv2.imread(r'imagens_reais\ypiranga.jpeg')
+#imagem = cv2.imread(r'imagens\gasolina_esp.png')
+imagem = cv2.imread(r'imagens_reais\promocao.jpeg')
 
 # Aplicar zoom na imagem
-fator_zoom = 1.2  # Fator de zoom ajustado
+fator_zoom = 1.2 # Fator de zoom ajustado
 imagem_zoomeada = aplicar_zoom(imagem, fator_zoom)
 
 # Ajustar brilho e contraste da imagem
@@ -60,6 +60,7 @@ confiancas = [entry[2] for entry in resultado]
 confianca_media = np.mean(confiancas)
 
 # Exibir o texto detectado e a confiança média
+
 if confianca_media > 0.40:
     print("Texto detectado:")
     print(texto)
@@ -67,3 +68,4 @@ if confianca_media > 0.40:
 else:
     print('Imagem não reconhecida')
     print("Confiança média da extração do código:", confianca_media)
+
